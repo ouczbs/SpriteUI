@@ -204,5 +204,3 @@ class GraphicItem(QGraphicsRectItem):
             GraphicItemEvent.SelectItem(self, value)
         return super().itemChange(change, value)
 
-    def addToScene(self, scene):
-        scene.addItem(self)

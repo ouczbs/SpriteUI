@@ -1,19 +1,19 @@
-import sys
 import cgitb
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import QStringListModel
-from sprite import *
-from PIL import Image
 import numpy as np
-from PyQt5.QtWidgets import QApplication, QSlider, QHBoxLayout, QVBoxLayout, QLabel, QWidget, QScrollArea, \
-    QPushButton, QDockWidget, QLineEdit, QGridLayout, QFormLayout, QListView, QAbstractItemView
+import sys
+import sys
+from PIL import Image
+from PyQt5.QtCore import QStringListModel
 from PyQt5.QtCore import Qt, QRectF
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QApplication, QSlider, QHBoxLayout, QVBoxLayout, QLabel, QWidget, QScrollArea, \
+    QPushButton, QDockWidget, QLineEdit, QGridLayout, QFormLayout, QListView, QAbstractItemView, QGraphicsPixmapItem
 from PyQt5.QtWidgets import QMainWindow
 
-from scene import GraphicScene
-from view import GraphicView
 from item import GraphicItem, GraphicItemEvent
-import sys
+from scene import GraphicScene
+from sprite import *
+from view import GraphicView
 
 sys.path.append("../py")
 import algorithm, merge
@@ -122,30 +122,35 @@ class LabelDetail(QDockWidget):
 class LabelImage(QWidget):
     def __init__(self, data, parent):
         super().__init__()
+        self.ui_rect_itemList = None
         self.ui_merge = None
         self.ui_split = None
         self.ui_mark = None
-        self.threads = {}
-        self.ui_list = None
         self.ui_detail = None
         self.ui_tips = None
+        self.threads = {}
         self.parent = parent
         self.data = data
+        self.ui_list = QListView(self)
         pixmap = QPixmap.fromImage(data.sprite.toQImage())
         self.width, self.height = pixmap.width(), pixmap.height()
         self.ui_bg = QLabel(self)
         self.ui_scene = GraphicScene(self.ui_bg)
-        scene_clip = QRectF(0, 0, self.width, self.height)
-        self.ui_scene.setSceneRect(scene_clip)
+        self.scene_clip = QRectF(0, 0, self.width, self.height)
+        self.ui_scene.setSceneRect(self.scene_clip)
         self.ui_sprite = self.ui_scene.addPixmap(pixmap)
+        self.pixmap = pixmap
         self.ui_view = GraphicView(self.ui_scene, self.ui_bg)
         self.initScale(1)
         self.initWidget()
-
-        rectItem = GraphicItem("label_item", QRectF(0, 0, 320, 240), scene_clip)
-        rectItem.addToScene(self.ui_scene)
         self.isGray = False
+        GraphicItemEvent.SelectItem.connect(self.SelectItem)
 
+    def SelectItem(self, item, show):
+        if show == 1:
+            #self.ui_list.setSelection()
+            print(item)
+            pass
     def initScale(self, scale):
         more_size, center_offset, border = 256, 128, 20
         width, height = int(self.width * scale), int(self.height * scale)
@@ -163,53 +168,57 @@ class LabelImage(QWidget):
             button_gray.setText("RGB")
             pixmap = QPixmap.fromImage(data.sprite.toGrayQImage())
             self.ui_sprite.setPixmap(pixmap)
-            # self.sprite.setPixmap(self.img.set)
+            self.pixmap = pixmap
             pass
         else:
             button_gray.setText("alpha")
             pixmap = QPixmap.fromImage(data.sprite.toQImage())
             self.ui_sprite.setPixmap(pixmap)
+            self.pixmap = pixmap
             pass
 
-    def thread_mark_then(self):
-        self.ui_tips.setText("marking success")
-        self.threads["mark"] = None
-        self.ui_mark.setVisible(False)
-        pass
-
-    def thread_split_then(self):
-        self.ui_tips.setText("split success")
-        self.threads["split"] = None
-        print(len(self.data.sprite.sub_list))
-        self.ui_merge.setVisible(True)
-        pass
-
     def ui_mark_clicked(self):
-        if "mark" in self.threads and self.threads["mark"] is not None:
-            return
         self.ui_tips.setText("is in marking")
-        thread = PromiseThread(algorithm.markMaskBg, self.data.sprite, 3, -1, 100).then(self.thread_mark_then)
-        thread.start()
-        self.threads["mark"] = thread
+        algorithm.markMaskBg(self.data.sprite, 3, -1, 100)
+        self.ui_mark.setVisible(False)
+        self.threads["mark"] = True
+        self.ui_tips.setText("marking success")
         pass
 
     def ui_split_clicked(self):
         if "mark" not in self.threads:
             self.ui_mark_clicked()
-            self.threads["mark"].then(self.ui_split_clicked)
-            return
         self.ui_tips.setText("is in split")
         sprite = self.data.sprite
         rectGrow = algorithm.makeRegionRectGrow()
         seeds_generator = algorithm.seedsAll_yield(sprite)
-        thread = PromiseThread(algorithm.run_all, rectGrow, sprite, seeds_generator).then(self.thread_split_then)
-        thread.start()
-        self.threads["split"] = thread
+        algorithm.run_all(rectGrow, sprite, seeds_generator)
+        self.initList()
+        self.init_rect_items()
+        self.ui_merge.setVisible(True)
+        self.threads["split"] = True
         pass
 
     def ui_merge_clicked(self):
         merge.checkMergeRects(self.data.sprite)
         self.ui_tips.setText("size = " + str(len(self.data.sprite.sub_list)))
+        self.initList()
+        self.init_rect_items()
+        pass
+
+    def init_rect_items(self):
+        sub_list = self.data.sprite.sub_list
+        item_list = self.data.item_list
+        size = len(sub_list)
+        self.ui_scene.clear()
+        self.ui_sprite = self.ui_scene.addPixmap(self.pixmap)
+        self.ui_rect_itemList = []
+        for i in range(size):
+            item = item_list[i]
+            x, y, w, h = sub_list[i]
+            rectItem = GraphicItem(item, QRectF(x, y, w, h), self.scene_clip)
+            self.ui_scene.addItem(rectItem)
+            self.ui_rect_itemList.append(rectItem)
         pass
 
     def initTitle(self):
@@ -246,19 +255,22 @@ class LabelImage(QWidget):
         return ui_hor
 
     def initList(self):
-        ui_list = QListView(self)
-        item_list = ['item %s' % i for i in range(11)]  # 1
+        ui_list = self.ui_list
+        size = len(self.data.sprite.sub_list)
+        item_list = ['item_%s' % i for i in range(size)]
         model = QStringListModel(self)
         model.setStringList(item_list)
         self.data.item_list = item_list
         ui_list.setModel(model)
         ui_list.setEditTriggers(QAbstractItemView.NoEditTriggers)
         ui_list.clicked.connect(self.change_func)
-        ui_list.setVisible(False)
-        return ui_list
+        ui_list.setVisible(True)
 
     def change_func(self, index):
-        # print(self, index, self.data.item_list[index.row()])
+        row = index.row()
+        self.ui_scene.clearSelection()
+        self.ui_rect_itemList[row].setSelected(True)
+        print(self, index, index.row() , self.data.item_list[index.row()])
         # self.ui_list.clearSelection()
         pass
 
@@ -275,9 +287,12 @@ class LabelImage(QWidget):
         ui_ver.addLayout(ui_title)
         ui_ver.addWidget(ui_scroll)
 
-        self.ui_list = self.initList()
+        ui_list = self.ui_list
         ui_hor.addLayout(ui_ver)
-        ui_hor.addWidget(self.ui_list)
+        ui_hor.addWidget(ui_list)
+        ui_hor.setStretchFactor(ui_ver, 3)
+        ui_hor.setStretchFactor(ui_list, 1)
+        ui_list.setVisible(False)
         self.setLayout(ui_hor)
 
     def zoom(self, value):
@@ -313,6 +328,7 @@ class SpriteApp(QApplication):
     def initData(self, path):
         image = Image.open(path)
         pixmap = np.array(image)
+        self.data.pixmap = pixmap
         self.data.sprite = SpriteUI(pixmap)
 
     def initWidget(self):
