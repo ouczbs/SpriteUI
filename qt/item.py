@@ -1,7 +1,7 @@
 from PyQt5.QtGui import QBrush, QColor, QPen, QPainter
 from PyQt5.QtWidgets import QGraphicsItem, QGraphicsRectItem
 from PyQt5.QtCore import Qt, QRectF, QPointF
-
+from event import *
 
 # 继承枚举类
 class Config:
@@ -27,25 +27,6 @@ class Config:
 
 
 _radius = Config.radius
-
-
-class EventBase:
-    def __init__(self):
-        self.funcs = []
-
-    def connect(self, func):
-        self.funcs.append(func)
-
-    def __call__(self, *params):
-        for func in self.funcs:
-            func(*params)
-
-
-class GraphicItemEvent:
-    SelectItem = EventBase()  # item , int 1 or 0
-    ResizeItem = EventBase()  # pos, size
-
-
 class GraphicItem(QGraphicsRectItem):
 
     def __init__(self, name, size, clip):
@@ -146,7 +127,7 @@ class GraphicItem(QGraphicsRectItem):
         if size.width() < _radius or size.height() < _radius:
             size = QRectF(self.size)
             size.translate(dx, dy)
-        GraphicItemEvent.ResizeItem(self.pos(), size)
+        LabelItemEvent.ResizeItem(self.pos(), size)
         self.tryChangeSize(size)
 
     def tryChangeSize(self, size):
@@ -198,9 +179,9 @@ class GraphicItem(QGraphicsRectItem):
         if change == QGraphicsItem.ItemPositionChange:
             size = self.size
             self.limit_rect_clip(size, QPointF(size.x(), size.y()), value)
-            GraphicItemEvent.ResizeItem(value, size)
+            LabelItemEvent.ResizeItem(value, size)
             return value
         if change == QGraphicsItem.ItemSelectedChange:
-            GraphicItemEvent.SelectItem(self, value)
+            LabelItemEvent.SelectItem(self, value)
         return super().itemChange(change, value)
 

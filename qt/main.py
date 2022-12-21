@@ -1,6 +1,4 @@
 import cgitb
-import numpy as np
-import sys
 import sys
 from PIL import Image
 from PyQt5.QtCore import QStringListModel
@@ -10,7 +8,7 @@ from PyQt5.QtWidgets import QApplication, QSlider, QHBoxLayout, QVBoxLayout, QLa
     QPushButton, QDockWidget, QLineEdit, QGridLayout, QFormLayout, QListView, QAbstractItemView, QGraphicsPixmapItem
 from PyQt5.QtWidgets import QMainWindow
 
-from item import GraphicItem, GraphicItemEvent
+from event import *
 from scene import GraphicScene
 from sprite import *
 from view import GraphicView
@@ -57,8 +55,8 @@ class LabelDetail(QDockWidget):
         self.item, self.ui_name = None, None
         self.isPreChangeItem = None
         self.ui_x, self.ui_y, self.ui_w, self.ui_h = None, None, None, None
-        GraphicItemEvent.SelectItem.connect(self.SelectItem)
-        GraphicItemEvent.ResizeItem.connect(self.ResizeItem)
+        LabelItemEvent.SelectItem.connect(self.SelectItem)
+        LabelItemEvent.ResizeItem.connect(self.ResizeItem)
         self.resize(200, 100)
         self.initWidget()
         self.bindItem()
@@ -132,14 +130,18 @@ class LabelList(QListView):
         model.setStringList(item_list)
         self.data.item_list = item_list
         self.setModel(model)
-        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.clicked.connect(self.change_func)
+        model.dataChanged.connect(self.test)
         self.setVisible(True)
-
+    def test(self, a ,b,c):
+        QListView.role
+        print(self.model().data(a , 2))
+        print(self.model().data(b , 0))
+        print(a ,b,c , " ???????")
     def change_func(self, index):
-        self.ui_scene.changeSelect(index.row())
-                  
-        print(self, index, index.row(), self.data.item_list[index.row()])
+        #self.changeSelect(index.row())
+        #self.edit(index)
+
         # self.ui_list.clearSelection()
         pass
 
@@ -167,7 +169,7 @@ class LabelImage(QWidget):
         self.initScale(1)
         self.initWidget()
         self.isGray = False
-        GraphicItemEvent.SelectItem.connect(self.SelectItem)
+        LabelItemEvent.SelectItem.connect(self.SelectItem)
 
     def SelectItem(self, item, show):
         if show == 1:
