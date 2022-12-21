@@ -35,6 +35,7 @@ class GraphicScene(QGraphicsScene):
     def initItemList(self):
         LabelItemEvent.SelectList.connect(self.SelectList)
         LabelItemEvent.ReNameItem.connect(self.ReNameItem)
+        LabelItemEvent.DeleteItem.connect(self.DeleteItem)
 
     def ReNameItem(self, row, new_name):
         ui_rect = self.ui_rectList[row]
@@ -54,6 +55,20 @@ class GraphicScene(QGraphicsScene):
         self.ui_sprite.setPixmap(ui_pixmap)
         self.data.ui_pixmap = ui_pixmap
 
+    def AppendItem(self, drag_rect):
+        sprite = self.data.sprite
+        x, y, w, h = drag_rect.x(), drag_rect.y(), drag_rect.width(), drag_rect.height()
+        name, loc = sprite.AppendItem([x, y, w, h])
+        rectItem = GraphicItem(name, QRectF(x, y, w, h), self.sceneRect(), loc)
+        self.addItem(rectItem)
+        LabelItemEvent.AppendItem(rectItem)
+
+    def DeleteItem(self, item):
+        sprite = self.data.sprite
+        row = item.row
+        sprite.DeleteItem(row)
+        self.removeItem(item)
+        del self.ui_rectList[row]
     def makeItemList(self):
         sub_list = self.data.sprite.sub_list
         name_list = self.data.sprite.name_list
@@ -67,6 +82,7 @@ class GraphicScene(QGraphicsScene):
             x, y, w, h = sub_list[i]
             rectItem = GraphicItem(name, QRectF(x, y, w, h), scene_clip, i)
             self.addItem(rectItem)
+
             self.ui_rectList.append(rectItem)
         pass
 

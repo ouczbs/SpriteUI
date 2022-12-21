@@ -131,8 +131,25 @@ class LabelList(QListView):
         self.isInitItem = False
         LabelItemEvent.SelectItem.connect(self.SelectItem)
         LabelItemEvent.ReNameItem.connect(self.ReNameItem)
+        LabelItemEvent.AppendItem.connect(self.AppendItem)
+        LabelItemEvent.DeleteItem.connect(self.DeleteItem)
         self.clicked.connect(self.item_clicked)
         pass
+
+    def AppendItem(self, item):
+        model = self.model()
+        if not model:
+            return
+        model.insertRow(item.row)
+        index = self.model().index(item.row)
+        model.setData(index, item.name, 0)
+        pass
+
+    def DeleteItem(self, item):
+        model = self.model()
+        if not model:
+            return
+        model.removeRow(item.row)
 
     def makeList(self):
         sprite = self.data.sprite
@@ -166,6 +183,7 @@ class LabelList(QListView):
         index = model.index(row)
         model.setData(index, new_name, 0)
         pass
+
     def name_changed(self, index):
         new_name = self.model().data(index, 0)
         self.isInitItem = True
@@ -203,10 +221,7 @@ class LabelImage(QWidget):
         width, height = int(self.width * scale), int(self.height * scale)
         self.ui_bg.resize(width + more_size, height + more_size)
         self.ui_view.resize(width + border, height + border)
-        matrix = self.ui_view.transform()
-        matrix.reset()
-        matrix.scale(scale, scale)
-        self.ui_view.setTransform(matrix)
+        self.ui_view.initScale(scale, border / 2)
 
     def ui_gray_clicked(self, button_gray):
         self.isGray = not self.isGray

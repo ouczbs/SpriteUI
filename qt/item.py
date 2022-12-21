@@ -157,7 +157,6 @@ class GraphicItem(QGraphicsRectItem):
         font, center = painter.fontMetrics(), self.size.center()
         width, height = font.width(self.name), font.height()
         painter.drawText(center.x() - width / 2, center.y() + height / 2, self.name)
-
         if not selected:
             return
         painter.setBrush(QBrush(QColor(0, 255, 0, 255)))

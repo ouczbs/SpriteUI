@@ -34,6 +34,15 @@ class SpriteUI():
         self.sub_list = []
         self.name_list = []
 
+    def AppendItem(self, rect):
+        loc = len(self.sub_list)
+        self.add_rect(rect)
+        return self.name_list[loc], loc
+
+    def DeleteItem(self, row):
+        del self.sub_list[row]
+        del self.name_list[row]
+
     def ReNameItem(self, row, new_name):
         self.name_list[row] = new_name
 
@@ -42,7 +51,6 @@ class SpriteUI():
         self.sub_list.append(rect)
         name = self.name_format % size
         self.name_list.append(name)
-        pass
 
     def toQImage(self):
         return self._QImage(self.pixmap)

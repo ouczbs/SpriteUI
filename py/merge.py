@@ -28,7 +28,6 @@ def checkMergeRects(sprite, dis=2):
             rect2 = rects[j]
             if getRectDis(rect1, rect2) < dis:
                 rects[j] = None
-                print(names[j])
                 names[j] = None
                 rects[i] = mergeRect(rect1, rect2)
         pass
