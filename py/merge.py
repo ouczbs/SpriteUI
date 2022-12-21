@@ -16,10 +16,11 @@ def mergeRect(r1, r2):
     return [left, top, right - left, bottom - top]
 
 
-def checkMergeRects(sprite, dis=3):
+def checkMergeRects(sprite, dis=2):
     rects = sprite.sub_list
-    l = len(rects)
-    for i in range(l):
+    names = sprite.name_list
+    size = len(rects)
+    for i in range(size):
         for j in range(i):
             if rects[j] is None:
                 continue
@@ -27,6 +28,9 @@ def checkMergeRects(sprite, dis=3):
             rect2 = rects[j]
             if getRectDis(rect1, rect2) < dis:
                 rects[j] = None
+                print(names[j])
+                names[j] = None
                 rects[i] = mergeRect(rect1, rect2)
         pass
-    sprite.sub_list = list(filter(None, sprite.sub_list))
+    sprite.sub_list = list(filter(None, rects))
+    sprite.name_list = list(filter(None, names))

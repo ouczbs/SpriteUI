@@ -1,7 +1,7 @@
 import cgitb
 import sys
 from PIL import Image
-from PyQt5.QtCore import QStringListModel
+from PyQt5.QtCore import QStringListModel, QModelIndex
 from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QSlider, QHBoxLayout, QVBoxLayout, QLabel, QWidget, QScrollArea, \
@@ -14,7 +14,7 @@ from sprite import *
 from view import GraphicView
 
 sys.path.append("../py")
-import algorithm, merge
+import py.algorithm as algorithm, py.merge as merge
 
 cgitb.enable(format("text"))
 gWorld = None
@@ -53,41 +53,42 @@ class LabelDetail(QDockWidget):
         self.setAllowedAreas(Qt.TopDockWidgetArea)
         self.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable)
         self.item, self.ui_name = None, None
-        self.isPreChangeItem = None
+        self.isInitItem = None
         self.ui_x, self.ui_y, self.ui_w, self.ui_h = None, None, None, None
         LabelItemEvent.SelectItem.connect(self.SelectItem)
         LabelItemEvent.ResizeItem.connect(self.ResizeItem)
+        LabelItemEvent.ReNameItem.connect(self.ReNameItem)
         self.resize(200, 100)
         self.initWidget()
         self.bindItem()
 
+    def ReNameItem(self, _, new_name):
+        self.name_changed(new_name)
+        pass
+
     def ResizeItem(self, pos, size):
-        self.isPreChangeItem = True
+        self.isInitItem = True
         x, y, w, h = str(pos.x() + size.x()), str(pos.y() + size.y()), str(size.width()), str(size.height())
         self.ui_x.setText(x)
         self.ui_y.setText(y)
         self.ui_w.setText(w)
         self.ui_h.setText(h)
-        self.isPreChangeItem = None
+        self.isInitItem = None
 
     def SelectItem(self, item, show):
         if show == 1:
             self.item = item
             self.ResizeItem(item.pos(), item.size)
-            self.isPreChangeItem = True
+            self.isInitItem = True
             self.ui_name.setText(item.name)
-            self.isPreChangeItem = None
+            self.isInitItem = None
             self.show()
         else:
             self.item = None
             self.hide()
 
-    def textChanged(self, value):
-        if self.isPreChangeItem:
-            return
-        self.item.name = self.ui_name.text()
-        if value == self.ui_name.text():
-            self.item.prepareGeometryChange()
+    def size_changed(self, value):
+        if self.isInitItem:
             return
         x, y = self.ui_x.text(), self.ui_y.text()
         w, h = self.ui_w.text(), self.ui_h.text()
@@ -99,12 +100,18 @@ class LabelDetail(QDockWidget):
         self.item.tryChangeSize(QRectF(x - pos.x(), y - pos.y(), w, h))
         pass
 
+    def name_changed(self, value):
+        if self.isInitItem:
+            return
+        self.ui_name.setText(value)
+        LabelItemEvent.ReNameItem(self.item.row, value)
+
     def bindItem(self):
-        self.ui_name.textChanged.connect(self.textChanged)
-        self.ui_x.textChanged.connect(self.textChanged)
-        self.ui_y.textChanged.connect(self.textChanged)
-        self.ui_w.textChanged.connect(self.textChanged)
-        self.ui_h.textChanged.connect(self.textChanged)
+        self.ui_name.textChanged.connect(self.name_changed)
+        self.ui_x.textChanged.connect(self.size_changed)
+        self.ui_y.textChanged.connect(self.size_changed)
+        self.ui_w.textChanged.connect(self.size_changed)
+        self.ui_h.textChanged.connect(self.size_changed)
 
     def initWidget(self):
         detail = QWidget(self)
@@ -121,28 +128,49 @@ class LabelList(QListView):
     def __init__(self, data, parent):
         super().__init__(parent)
         self.data = data
+        self.isInitItem = False
+        LabelItemEvent.SelectItem.connect(self.SelectItem)
+        LabelItemEvent.ReNameItem.connect(self.ReNameItem)
+        self.clicked.connect(self.item_clicked)
         pass
 
     def makeList(self):
-        size = len(self.data.sprite.sub_list)
-        item_list = ['item_%s' % i for i in range(size)]
+        sprite = self.data.sprite
         model = QStringListModel(self)
-        model.setStringList(item_list)
-        self.data.item_list = item_list
+        model.setStringList(sprite.name_list)
+        model.dataChanged.connect(self.name_changed)
         self.setModel(model)
-        self.clicked.connect(self.change_func)
-        model.dataChanged.connect(self.test)
         self.setVisible(True)
-    def test(self, a ,b,c):
-        QListView.role
-        print(self.model().data(a , 2))
-        print(self.model().data(b , 0))
-        print(a ,b,c , " ???????")
-    def change_func(self, index):
-        #self.changeSelect(index.row())
-        #self.edit(index)
 
-        # self.ui_list.clearSelection()
+    def SelectItem(self, item, show):
+        if not self.model():
+            return
+        if show == 1:
+            index = self.currentIndex()
+            if index.row() != item.row:
+                index = self.model().index(item.row)
+                self.setCurrentIndex(index)
+        pass
+
+    def item_clicked(self, index):
+        LabelItemEvent.SelectList(index.row())
+
+    def ReNameItem(self, row, new_name):
+        sprite = self.data.sprite
+        sprite.ReNameItem(row, new_name)
+        model = self.model()
+        if not model:
+            return
+        if self.isInitItem:
+            return
+        index = model.index(row)
+        model.setData(index, new_name, 0)
+        pass
+    def name_changed(self, index):
+        new_name = self.model().data(index, 0)
+        self.isInitItem = True
+        LabelItemEvent.ReNameItem(index.row(), new_name)
+        self.isInitItem = False
         pass
 
 
@@ -169,13 +197,6 @@ class LabelImage(QWidget):
         self.initScale(1)
         self.initWidget()
         self.isGray = False
-        LabelItemEvent.SelectItem.connect(self.SelectItem)
-
-    def SelectItem(self, item, show):
-        if show == 1:
-            # self.ui_list.setSelection()
-            print(item)
-            pass
 
     def initScale(self, scale):
         more_size, center_offset, border = 256, 128, 20
@@ -318,7 +339,6 @@ class SpriteApp(QApplication):
         image = Image.open(path)
         pixmap = np.array(image)
         self.data.pixmap = pixmap
-        self.data.item_list = []
         self.data.sprite = SpriteUI(pixmap)
 
     def initWidget(self):

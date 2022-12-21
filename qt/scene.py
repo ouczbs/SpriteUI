@@ -4,7 +4,8 @@ from PyQt5.QtWidgets import QGraphicsScene, QSlider
 from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtCore import QLine
 
-from qt.item import GraphicItem
+from event import *
+from item import GraphicItem
 
 
 class GraphicScene(QGraphicsScene):
@@ -29,26 +30,42 @@ class GraphicScene(QGraphicsScene):
 
         self.setBackgroundBrush(self._color_background)
         self.setSceneRect(0, 0, 600, 600)
+        self.initItemList()
+
+    def initItemList(self):
+        LabelItemEvent.SelectList.connect(self.SelectList)
+        LabelItemEvent.ReNameItem.connect(self.ReNameItem)
+
+    def ReNameItem(self, row, new_name):
+        ui_rect = self.ui_rectList[row]
+        if ui_rect.name == new_name:
+            return
+        ui_rect.name = new_name
+        ui_rect.prepareGeometryChange()
+
+    def SelectList(self, row):
+        ui_rect = self.ui_rectList[row]
+        if ui_rect.isSelected():
+            return
+        self.clearSelection()
+        ui_rect.setSelected(True)
 
     def setSprite(self, ui_pixmap):
         self.ui_sprite.setPixmap(ui_pixmap)
         self.data.ui_pixmap = ui_pixmap
 
-    def changeSelect(self, row):
-        self.clearSelection()
-        self.item_list[row].setSelected(True)
     def makeItemList(self):
         sub_list = self.data.sprite.sub_list
-        item_list = self.data.item_list
+        name_list = self.data.sprite.name_list
         size = len(sub_list)
         self.clear()
         self.ui_sprite = self.addPixmap(self.data.ui_pixmap)
         self.ui_rectList = []
         scene_clip = self.sceneRect()
         for i in range(size):
-            item = item_list[i]
+            name = name_list[i]
             x, y, w, h = sub_list[i]
-            rectItem = GraphicItem(item, QRectF(x, y, w, h), scene_clip)
+            rectItem = GraphicItem(name, QRectF(x, y, w, h), scene_clip, i)
             self.addItem(rectItem)
             self.ui_rectList.append(rectItem)
         pass

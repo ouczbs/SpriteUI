@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QGraphicsItem, QGraphicsRectItem
 from PyQt5.QtCore import Qt, QRectF, QPointF
 from event import *
 
+
 # 继承枚举类
 class Config:
     TOP = 1
@@ -27,15 +28,19 @@ class Config:
 
 
 _radius = Config.radius
+
+
+
 class GraphicItem(QGraphicsRectItem):
 
-    def __init__(self, name, size, clip):
+    def __init__(self, name, size, clip, row=0):
         rect = QRectF(size.x() - _radius / 2, size.y() - _radius / 2, size.width() + _radius, size.height() + _radius)
         super().__init__(rect)
         self.size_dir = None
         self.mouse_pos = self.pos()
         self.size = size
         self.clip = clip
+        self.row = row
         self.name = name or ""
         self.setPen(Qt.red)
         self.setAcceptHoverEvents(True)
@@ -127,12 +132,13 @@ class GraphicItem(QGraphicsRectItem):
         if size.width() < _radius or size.height() < _radius:
             size = QRectF(self.size)
             size.translate(dx, dy)
-        LabelItemEvent.ResizeItem(self.pos(), size)
         self.tryChangeSize(size)
 
     def tryChangeSize(self, size):
-        if self.limit_rect_clip(size, self.pos(), size):
+        pos = QPointF(size.x(), size.y())
+        if self.limit_rect_clip(size, self.pos(), pos):
             return
+        LabelItemEvent.ResizeItem(self.pos(), size)
         self.prepareGeometryChange()
         self.size = size
         self.setRect(size.x() - _radius / 2, size.y() - _radius / 2, size.width() + _radius, size.height() + _radius)
@@ -184,4 +190,3 @@ class GraphicItem(QGraphicsRectItem):
         if change == QGraphicsItem.ItemSelectedChange:
             LabelItemEvent.SelectItem(self, value)
         return super().itemChange(change, value)
-
