@@ -1,15 +1,20 @@
 import math
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtWidgets import QGraphicsScene, QSlider
 from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtCore import QLine
 
+from qt.item import GraphicItem
+
 
 class GraphicScene(QGraphicsScene):
 
-    def __init__(self, parent=None):
+    def __init__(self, data, parent=None):
         super().__init__(parent)
         # settings
+        self.data = data
+        self.ui_rectList = None
+        self.ui_sprite = None
         self.grid_size = 20
         self.grid_squares = 5
 
@@ -24,6 +29,29 @@ class GraphicScene(QGraphicsScene):
 
         self.setBackgroundBrush(self._color_background)
         self.setSceneRect(0, 0, 600, 600)
+
+    def setSprite(self, ui_pixmap):
+        self.ui_sprite.setPixmap(ui_pixmap)
+        self.data.ui_pixmap = ui_pixmap
+
+    def changeSelect(self, row):
+        self.clearSelection()
+        self.item_list[row].setSelected(True)
+    def makeItemList(self):
+        sub_list = self.data.sprite.sub_list
+        item_list = self.data.item_list
+        size = len(sub_list)
+        self.clear()
+        self.ui_sprite = self.addPixmap(self.data.ui_pixmap)
+        self.ui_rectList = []
+        scene_clip = self.sceneRect()
+        for i in range(size):
+            item = item_list[i]
+            x, y, w, h = sub_list[i]
+            rectItem = GraphicItem(item, QRectF(x, y, w, h), scene_clip)
+            self.addItem(rectItem)
+            self.ui_rectList.append(rectItem)
+        pass
 
     def mousePressEvent(self, event: 'QGraphicsSceneMouseEvent') -> None:
         super().mousePressEvent(event)
