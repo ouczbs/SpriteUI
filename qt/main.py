@@ -5,14 +5,14 @@ from PyQt5.QtCore import QStringListModel, QModelIndex
 from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QSlider, QHBoxLayout, QVBoxLayout, QLabel, QWidget, QScrollArea, \
-    QPushButton, QDockWidget, QLineEdit, QGridLayout, QFormLayout, QListView, QAbstractItemView, QGraphicsPixmapItem
+    QPushButton, QDockWidget, QLineEdit, QGridLayout, QFormLayout, QListView, QMenu, QFileDialog
 from PyQt5.QtWidgets import QMainWindow
 
 from event import *
 from scene import GraphicScene
 from sprite import *
 from view import GraphicView
-
+from configparser import ConfigParser
 sys.path.append("../py")
 import py.algorithm as algorithm, py.merge as merge
 
@@ -140,16 +140,18 @@ class LabelList(QListView):
         model = self.model()
         if not model:
             return
+        self.isInitItem = True
         model.insertRow(item.row)
         index = self.model().index(item.row)
         model.setData(index, item.name, 0)
+        self.isInitItem = False
         pass
 
     def DeleteItem(self, item):
         model = self.model()
         if not model:
             return
-        model.removeRow(item.row)
+        self.setRowHidden(item.row, True)
 
     def makeList(self):
         sprite = self.data.sprite
@@ -171,10 +173,9 @@ class LabelList(QListView):
 
     def item_clicked(self, index):
         LabelItemEvent.SelectList(index.row())
+        pass
 
     def ReNameItem(self, row, new_name):
-        sprite = self.data.sprite
-        sprite.ReNameItem(row, new_name)
         model = self.model()
         if not model:
             return
@@ -185,6 +186,8 @@ class LabelList(QListView):
         pass
 
     def name_changed(self, index):
+        if self.isInitItem:
+            return
         new_name = self.model().data(index, 0)
         self.isInitItem = True
         LabelItemEvent.ReNameItem(index.row(), new_name)
@@ -329,32 +332,83 @@ class MainWindow(QMainWindow):
     def __init__(self, app):
         super().__init__()
         self.app = app
+        self.data = app.data
+        if not self.data.sprite:
+            self.initSprite()
         self.labelImage = LabelImage(app.data, self)
         self.setCentralWidget(self.labelImage)
         self.setMinimumHeight(600)
         self.setMinimumWidth(600)
         self.setWindowTitle("图集切割")
+        self.initMenu()
+
+    def initMenu(self):
+        ui_menu = self.menuBar()
+        ui_file = ui_menu.addMenu("文件")
+        # 给菜单项目添加子菜单
+        ui_new = ui_file.addAction("新建")
+        ui_save = ui_file.addAction("保存")
+        ui_import = ui_menu.addMenu("导入")
+        ui_im_ue = ui_import.addAction("UE")
+        ui_im_unity = ui_import.addAction("Unity")
+        ui_export = ui_menu.addMenu("导出")
+        ui_ex_ue = ui_export.addAction("UE")
+        ui_ex_unity = ui_export.addAction("Unity")
+        ui_help = ui_menu.addMenu("Help")
+
+        ui_new.triggered.connect(self.openSprite)
+
+    def initSprite(self):
+        imgName, imgType = QFileDialog.getOpenFileName(self, "打开图片", "", "*.png;;*.jpg;;All Files(*)")
+        ConfigEvent.OpenSprite(imgName)
+        image = Image.open(imgName)
+        pixmap = np.array(image)
+        self.data.sprite = SpriteUI(pixmap)
+
+    def openSprite(self):
+        self.initSprite()
+        self.labelImage.close()
+        self.labelImage = LabelImage(self.data, self)
+        self.setCentralWidget(self.labelImage)
 
 
 class SpriteApp(QApplication):
     def __init__(self, argv):
         super().__init__(argv)
+        self.ini = 'config.ini'
         global gWorld
         gWorld = self
         self.data = type("Data", (), {})
         self.ui = type("UI", (), {})
-        self.initData('./all.png')
+        self.cfp = ConfigParser()
+        ConfigEvent.OpenSprite.connect(self.OpenSprite)
+        self.initData(self.ini)
         self.initWidget()
+
+    def OpenSprite(self, path):
+        if not self.cfp.has_section("files"):
+            self.cfp.add_section("files")  # 设置option的值
+        self.cfp.set("files", "recent", path)
+        self.save()
+    def save(self):
+        with open(self.ini, "w+") as f:
+            self.cfp.write(f)
 
     def run(self):
         self.ui.main.show()
         sys.exit(self.exec_())
 
-    def initData(self, path):
-        image = Image.open(path)
-        pixmap = np.array(image)
-        self.data.pixmap = pixmap
-        self.data.sprite = SpriteUI(pixmap)
+    def initData(self, ini):
+        self.cfp.read(ini)
+        self.data.sprite = None
+        path = None
+        if self.cfp.has_option("files", "recent"):
+            path = self.cfp.get("files", "recent")
+
+        if path:
+            image = Image.open(path)
+            pixmap = np.array(image)
+            self.data.sprite = SpriteUI(pixmap)
 
     def initWidget(self):
         main = MainWindow(self)
@@ -370,7 +424,6 @@ class SpriteApp(QApplication):
 def demo_run():
     app = SpriteApp(sys.argv)
     app.run()
-
 
 if __name__ == '__main__':
     demo_run()

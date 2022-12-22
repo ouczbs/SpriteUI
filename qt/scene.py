@@ -38,6 +38,8 @@ class GraphicScene(QGraphicsScene):
         LabelItemEvent.DeleteItem.connect(self.DeleteItem)
 
     def ReNameItem(self, row, new_name):
+        sprite = self.data.sprite
+        sprite.ReNameItem(row, new_name)
         ui_rect = self.ui_rectList[row]
         if ui_rect.name == new_name:
             return
@@ -46,7 +48,7 @@ class GraphicScene(QGraphicsScene):
 
     def SelectList(self, row):
         ui_rect = self.ui_rectList[row]
-        if ui_rect.isSelected():
+        if not ui_rect or ui_rect.isSelected():
             return
         self.clearSelection()
         ui_rect.setSelected(True)
@@ -61,6 +63,7 @@ class GraphicScene(QGraphicsScene):
         name, loc = sprite.AppendItem([x, y, w, h])
         rectItem = GraphicItem(name, QRectF(x, y, w, h), self.sceneRect(), loc)
         self.addItem(rectItem)
+        self.ui_rectList.append(rectItem)
         LabelItemEvent.AppendItem(rectItem)
 
     def DeleteItem(self, item):
@@ -68,7 +71,7 @@ class GraphicScene(QGraphicsScene):
         row = item.row
         sprite.DeleteItem(row)
         self.removeItem(item)
-        del self.ui_rectList[row]
+        self.ui_rectList[row] = None
     def makeItemList(self):
         sub_list = self.data.sprite.sub_list
         name_list = self.data.sprite.name_list

@@ -40,8 +40,8 @@ class SpriteUI():
         return self.name_list[loc], loc
 
     def DeleteItem(self, row):
-        del self.sub_list[row]
-        del self.name_list[row]
+        self.sub_list[row] = None
+        self.name_list[row] = None
 
     def ReNameItem(self, row, new_name):
         self.name_list[row] = new_name

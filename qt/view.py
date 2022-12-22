@@ -25,7 +25,7 @@ class GraphicView(QGraphicsView):
 
     def initScale(self, scale, offset):
         self.zoom_scale = scale
-        self.offset = offset / scale
+        self.offset = int(offset / scale)
         matrix = self.transform()
         matrix.reset()
         matrix.scale(scale, scale)
@@ -54,7 +54,7 @@ class GraphicView(QGraphicsView):
         zoom_scale = self.zoom_scale
         if x1 > x2:
             x1, x2 = x2, x1
-        return x1 / zoom_scale, x2 / zoom_scale
+        return int(x1 / zoom_scale), int(x2 / zoom_scale)
 
     def mouseReleaseEvent(self, event):
         if self.isDrag:

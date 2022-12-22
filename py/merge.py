@@ -17,8 +17,8 @@ def mergeRect(r1, r2):
 
 
 def checkMergeRects(sprite, dis=2):
-    rects = sprite.sub_list
-    names = sprite.name_list
+    rects = list(filter(None, sprite.sub_list))
+    names = list(filter(None, sprite.name_list))
     size = len(rects)
     for i in range(size):
         for j in range(i):

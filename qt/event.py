@@ -23,3 +23,6 @@ class LabelItemEvent:
     DeleteItem = EventBase()  # item
     AppendItem = EventBase()  # item
 
+
+class ConfigEvent:
+    OpenSprite = EventBase()  # path
