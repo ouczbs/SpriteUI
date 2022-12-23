@@ -1,5 +1,5 @@
-import cgitb
-import sys
+
+import sys, os
 from PIL import Image
 from PyQt5.QtCore import QStringListModel, QModelIndex
 from PyQt5.QtCore import Qt, QRectF
@@ -13,10 +13,10 @@ from scene import GraphicScene
 from sprite import *
 from view import GraphicView
 from configparser import ConfigParser
+
 sys.path.append("../py")
 import py.algorithm as algorithm, py.merge as merge
 
-cgitb.enable(format("text"))
 gWorld = None
 
 
@@ -357,13 +357,18 @@ class MainWindow(QMainWindow):
         ui_help = ui_menu.addMenu("Help")
 
         ui_new.triggered.connect(self.openSprite)
+        ui_ex_ue.triggered.connect(self.ExportUE)
+
+    def ExportUE(self):
+        import json
+        sprite = self.data.sprite
+        ue = sprite.ExportUE()
+        with open(self.data.path + "/" + sprite.name + ".paper2dsprites", 'w') as fw:
+            json.dump(ue, fw, indent=4, ensure_ascii=False)
 
     def initSprite(self):
-        imgName, imgType = QFileDialog.getOpenFileName(self, "打开图片", "", "*.png;;*.jpg;;All Files(*)")
-        ConfigEvent.OpenSprite(imgName)
-        image = Image.open(imgName)
-        pixmap = np.array(image)
-        self.data.sprite = SpriteUI(pixmap)
+        imgName, imgType = QFileDialog.getOpenFileName(self, "打开图片", "", "*.png;;")
+        MenuEvent.OpenSprite(imgName)
 
     def openSprite(self):
         self.initSprite()
@@ -381,15 +386,28 @@ class SpriteApp(QApplication):
         self.data = type("Data", (), {})
         self.ui = type("UI", (), {})
         self.cfp = ConfigParser()
-        ConfigEvent.OpenSprite.connect(self.OpenSprite)
+        MenuEvent.OpenSprite.connect(self.OpenSprite)
         self.initData(self.ini)
         self.initWidget()
 
-    def OpenSprite(self, path):
+    def initSprite(self, imgName, path, name):
+        image = Image.open(imgName)
+        pixmap = np.array(image)
+        self.data.sprite = SpriteUI(pixmap, name, name + "_%s")
+        self.data.path = path
+
+    def OpenSprite(self, imgName):
+        path = os.path.dirname(imgName)
+        basename = os.path.basename(imgName)
+        name = basename.split(".")[0]
+        self.initSprite(imgName, path, name)
         if not self.cfp.has_section("files"):
             self.cfp.add_section("files")  # 设置option的值
-        self.cfp.set("files", "recent", path)
+        self.cfp.set("files", "recent", imgName)
+        self.cfp.set("files", "path", path)
+        self.cfp.set("files", "name", name)
         self.save()
+
     def save(self):
         with open(self.ini, "w+") as f:
             self.cfp.write(f)
@@ -401,14 +419,11 @@ class SpriteApp(QApplication):
     def initData(self, ini):
         self.cfp.read(ini)
         self.data.sprite = None
-        path = None
         if self.cfp.has_option("files", "recent"):
-            path = self.cfp.get("files", "recent")
-
-        if path:
-            image = Image.open(path)
-            pixmap = np.array(image)
-            self.data.sprite = SpriteUI(pixmap)
+            imgName = self.cfp.get("files", "recent")
+            path = self.cfp.get("files", "path")
+            name = self.cfp.get("files", "name")
+            self.initSprite(imgName, path, name)
 
     def initWidget(self):
         main = MainWindow(self)
@@ -424,6 +439,7 @@ class SpriteApp(QApplication):
 def demo_run():
     app = SpriteApp(sys.argv)
     app.run()
+
 
 if __name__ == '__main__':
     demo_run()

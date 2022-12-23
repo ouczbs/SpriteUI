@@ -24,5 +24,6 @@ class LabelItemEvent:
     AppendItem = EventBase()  # item
 
 
-class ConfigEvent:
+class MenuEvent:
     OpenSprite = EventBase()  # path
+    ExportUE = EventBase()  # path

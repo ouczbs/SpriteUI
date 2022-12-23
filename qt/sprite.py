@@ -22,8 +22,8 @@ class PromiseThread(threading.Thread):
             func()
 
 
-class SpriteUI():
-    def __init__(self, pixmap, name_format="item_%s"):
+class SpriteUI:
+    def __init__(self, pixmap, name="Sprite", name_format="item_%s"):
         h, w, c = pixmap.shape
         self.name_format = name_format
         self.h = h
@@ -33,6 +33,7 @@ class SpriteUI():
         self.mask = np.zeros(shape=(h, w), dtype="int64")
         self.sub_list = []
         self.name_list = []
+        self.name = name
 
     def AppendItem(self, rect):
         loc = len(self.sub_list)
@@ -68,3 +69,16 @@ class SpriteUI():
     def toGrayQImage(self):
         pixmap = self.pixmap[:, :, 3]
         return self._QImage(pixmap)
+
+    def ExportUE(self):
+        sub_list, name_list = self.sub_list,self.name_list
+        frames = {}
+        for sub, name in zip(sub_list, name_list):
+            x, y, w, h = sub
+            frame = {"rotated": False, "trimmed": False, "frame": {"x": x, "y": y, "w": w, "h": h},
+                     "spriteSourceSize": {"x": 0, "y": 0, "w": w, "h": h}, "sourceSize": {"w": w, "h": h}}
+            frames[name] = frame
+        meta = {"version": 1, "target": "paper2d", "image": self.name + ".png", "format": "RGBA8888",
+                "size": {"w": self.w, "h": self.h}, "scale": 1, "app": "UISprite"}
+        res = {"frames": frames, "meta": meta}
+        return res
