@@ -11,9 +11,17 @@ def seedsAll_yield(sprite):
             class_k = class_k + 1
             yield i ,j , class_k
     pass
+cdef getGrayDis(char[:] pix1,char[:] pix2):
+    g1 = pix1[0] * 0.299 + pix1[1] * 0.587 + pix1[2] * 0.114
+    g2 = pix2[0] * 0.299 + pix2[1] * 0.587 + pix2[2] * 0.114
+    return abs(g1 - g2)
 connects = [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1],[-1, 0]]
-cdef class RegionRectGrow():
-    cdef int top,left,right,bottom
+cdef class RegionRectGrow:
+    cdef int top,left,right,bottom,dis_threshold
+    def __init__(self):
+        self.dis_threshold = 10
+    def setDis_threshold(self, int dis_threshold):
+        self.dis_threshold = dis_threshold
     cdef inline init_rect(self, int y, int x):
         self.left = x
         self.right = x
@@ -35,10 +43,12 @@ cdef class RegionRectGrow():
     cdef inline region_grow(self ,seed_list, sprite ,int class_k):
         cdef int height,width
         cdef int ty,tx , cy , cx , ny,nx
-        cdef int value
+        cdef int value,dis_threshold
         cdef long long[:,:] mask
+        cdef char[:,:,:] pixmap
         height,width = sprite.h , sprite.w
         pixmap,mask = sprite.pixmap,sprite.mask
+        dis_threshold = self.dis_threshold
         while (len(seed_list) > 0):
             ty,tx = seed_list.pop()
             for i in range(8):
@@ -48,6 +58,8 @@ cdef class RegionRectGrow():
                     continue
                 value = mask[ny, nx]
                 if value == class_k or value == 1:
+                    continue
+                if getGrayDis(pixmap[ty, tx], pixmap[ny, nx]) > dis_threshold:
                     continue
                 self.setMask(mask, ny , nx , class_k)
                 seed_list.append([ny , nx])
@@ -73,11 +85,6 @@ cdef class RegionRectGrow():
                 self.setMask(mask ,i , j , class_k)
                 seed_list.append([i , j])
         pass
-def markMaskBg(sprite,int k ,int mi ,int ma):
-    pixmap = sprite.pixmap
-    mask = sprite.mask
-    bool_mask = (pixmap[:,:,k] < ma) & (pixmap[:,:,k] > mi)
-    mask[bool_mask] = 1
 def makeRegionRectGrow():
     return RegionRectGrow()
 def run_all(algorithm ,sprite , seeds_generator):

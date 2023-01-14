@@ -1,6 +1,5 @@
 import threading
 import numpy as np
-
 from PyQt5.QtGui import QImage
 
 
@@ -58,7 +57,7 @@ class SpriteUI:
 
     def _QImage(self, pixmap):
         shape = pixmap.shape
-        w, h = shape[0], shape[1]
+        h, w = shape[0], shape[1]
         c = len(shape) > 2 and shape[2] or 1
         bGray = c == 1
         bits_format = c == 4 and QImage.Format_RGBA8888 or QImage.Format_RGB888
@@ -66,6 +65,9 @@ class SpriteUI:
         qImage = QImage(pixmap.tobytes(), w, h, w * c, bits_format)
         return qImage
 
+    def delBg(self):
+        pixmap, mask = self.pixmap, self.mask
+        pixmap[mask == 1, :] = 0
     def toGrayQImage(self):
         pixmap = self.pixmap[:, :, 3]
         return self._QImage(pixmap)

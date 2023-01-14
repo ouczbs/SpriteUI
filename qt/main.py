@@ -1,4 +1,3 @@
-
 import sys, os
 from PIL import Image
 from PyQt5.QtCore import QStringListModel, QModelIndex
@@ -195,6 +194,25 @@ class LabelList(QListView):
         pass
 
 
+def markMaskBg(sprite, k, mi, ma):
+    pixmap = sprite.pixmap
+    mask = sprite.mask
+    bool_mask = (pixmap[:, :, k] < ma) & (pixmap[:, :, k] > mi)
+    mask[bool_mask] = 1
+
+
+def markMaskBgChanel(sprite, chanels):
+    pixmap = sprite.pixmap
+    mask = sprite.mask
+    bool_mask = None
+    for k,mi,ma in chanels:
+        if bool_mask is not None:
+            bool_mask = bool_mask & (pixmap[:, :, k] < ma) & (pixmap[:, :, k] > mi)
+        else:
+            bool_mask = (pixmap[:, :, k] < ma) & (pixmap[:, :, k] > mi)
+    mask[bool_mask] = 1
+
+
 class LabelImage(QWidget):
     def __init__(self, data, parent):
         super().__init__()
@@ -242,10 +260,12 @@ class LabelImage(QWidget):
 
     def ui_mark_clicked(self):
         self.ui_tips.setText("is in marking")
-        algorithm.markMaskBg(self.data.sprite, 3, -1, 100)
+        #markMaskBg(self.data.sprite, 3, -1, 60)
+        markMaskBgChanel(self.data.sprite,[[3,-1,60],[0,200,256],[1,200,256],[2,200,256]])
         self.ui_mark.setVisible(False)
         self.threads["mark"] = True
         self.ui_tips.setText("marking success")
+        self.data.sprite.delBg()
         pass
 
     def ui_split_clicked(self):
@@ -367,7 +387,7 @@ class MainWindow(QMainWindow):
             json.dump(ue, fw, indent=4, ensure_ascii=False)
 
     def initSprite(self):
-        imgName, imgType = QFileDialog.getOpenFileName(self, "打开图片", "", "*.png;;")
+        imgName, imgType = QFileDialog.getOpenFileName(self, "打开图片", self.data.path, "*.png;;")
         MenuEvent.OpenSprite(imgName)
 
     def openSprite(self):
@@ -392,7 +412,7 @@ class SpriteApp(QApplication):
 
     def initSprite(self, imgName, path, name):
         image = Image.open(imgName)
-        pixmap = np.array(image)
+        pixmap = np.array(image, "uint8")
         self.data.sprite = SpriteUI(pixmap, name, name + "_%s")
         self.data.path = path
 
@@ -419,6 +439,7 @@ class SpriteApp(QApplication):
     def initData(self, ini):
         self.cfp.read(ini)
         self.data.sprite = None
+        self.data.path = ""
         if self.cfp.has_option("files", "recent"):
             imgName = self.cfp.get("files", "recent")
             path = self.cfp.get("files", "path")
